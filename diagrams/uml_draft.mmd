@@ -1,0 +1,69 @@
+classDiagram
+    class Owner {
+        +String owner_id
+        +String name
+        +int time_available_minutes
+        +List~String~ preferences
+        +add() void
+        +edit(name, time_available, preferences) void
+        +delete() void
+        +generateSchedule() Schedule
+    }
+
+    class Pet {
+        +String pet_id
+        +String name
+        +String owner_id
+        +add() void
+        +edit(name) void
+        +delete() void
+        +getTasks() List~Task~
+    }
+
+    class Task {
+        +String task_id
+        +String pet_id
+        +TaskType task_type
+        +Time start_time
+        +int duration_minutes
+        +Priority priority
+        +String explanation
+        +add() void
+        +edit(start_time, duration, priority, task_type) void
+        +delete() void
+    }
+
+    class Schedule {
+        +String schedule_id
+        +String owner_id
+        +Date date
+        +List~Task~ tasks
+        +String generation_explanation
+        +generate(owner, pets, tasks) void
+        +getTodaysTasks() List~Task~
+        +reorder() void
+        +summarize() String
+    }
+
+    class TaskType {
+        <<enumeration>>
+        WALK_PET
+        FEED_FOOD
+        GIVE_MEDS
+        PROVIDE_ENRICHMENT
+        GROOM
+    }
+
+    class Priority {
+        <<enumeration>>
+        HIGH
+        MEDIUM
+        LOW
+    }
+
+    Owner "1" *-- "1..*" Pet : owns
+    Pet "1" o-- "0..*" Task : has
+    Owner "1" --> "1" Schedule : generates
+    Schedule "1" o-- "0..*" Task : organizes
+    Task --> TaskType : categorized by
+    Task --> Priority : ranked by
