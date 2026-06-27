@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import List, Optional
 import datetime
+import itertools
 
 
 class TaskType(Enum):
@@ -62,9 +63,28 @@ class Task:
         if frequency is not None:
             self.frequency = frequency
 
-    def complete(self) -> None:
-        """Mark this task as completed."""
+    def complete(self, on_date: Optional[datetime.date] = None) -> Optional["Task"]:
+        """Mark this task completed and return a new Task for the next occurrence if recurring.
+
+        Returns a new Task for DAILY (next day) or WEEKLY (next week) frequencies,
+        or None for ONCE/MONTHLY tasks.
+        """
         self.is_completed = True
+        if self.frequency not in (Frequency.DAILY, Frequency.WEEKLY):
+            return None
+        base = on_date or datetime.date.today()
+        delta = datetime.timedelta(days=1 if self.frequency == Frequency.DAILY else 7)
+        next_date = base + delta
+        return Task(
+            task_id=f"{self.task_id}_{next_date.isoformat()}",
+            pet_id=self.pet_id,
+            task_type=self.task_type,
+            start_time=self.start_time,
+            duration_minutes=self.duration_minutes,
+            priority=self.priority,
+            description=self.description,
+            frequency=self.frequency,
+        )
 
     def delete(self, pet: "Pet") -> None:
         """Remove this task from a pet's task list."""
@@ -124,6 +144,17 @@ class Schedule:
         self.tasks = [task for task in tasks if task.pet_id in pet_ids]
         self.reorder()
 
+    def complete_task(self, task: Task) -> Optional[Task]:
+        """Mark a task complete and, if recurring, add its next occurrence to the schedule.
+
+        Returns the newly created follow-up Task, or None for non-recurring tasks.
+        """
+        next_task = task.complete(on_date=self.date)
+        if next_task is not None:
+            self.tasks.append(next_task)
+            self.reorder()
+        return next_task
+
     def get_todays_tasks(self) -> List[Task]:
         """Return all incomplete tasks for today."""
         return [t for t in self.tasks if not t.is_completed]
@@ -139,6 +170,30 @@ class Schedule:
     def get_tasks_by_priority(self, priority: Priority) -> List[Task]:
         """Return all tasks in the schedule with the specified priority level."""
         return [t for t in self.tasks if t.priority == priority]
+
+    def get_conflicts(self, same_pet_only: bool = False) -> List[tuple]:
+        """Return pairs of tasks whose time windows overlap.
+
+        Each result is a (task_a, task_b) tuple. Pass same_pet_only=True to
+        restrict to conflicts between tasks for the same pet.
+        """
+        anchor = datetime.date.today()
+        conflicts = []
+        for i, a in enumerate(self.tasks):
+            a_start = datetime.datetime.combine(anchor, a.start_time)
+            a_end = a_start + datetime.timedelta(minutes=a.duration_minutes)
+            for b in self.tasks[i + 1:]:
+                if same_pet_only and a.pet_id != b.pet_id:
+                    continue
+                b_start = datetime.datetime.combine(anchor, b.start_time)
+                b_end = b_start + datetime.timedelta(minutes=b.duration_minutes)
+                if a_start < b_end and b_start < a_end:
+                    conflicts.append((a, b))
+        return conflicts
+
+    def sort_by_time(self) -> None:
+        """Sort tasks by start time in chronological order."""
+        self.tasks = sorted(self.tasks, key=lambda t: t.start_time)
 
     def reorder(self) -> None:
         """Sort tasks by priority then start time."""
@@ -196,17 +251,11 @@ class Owner:
 
     def get_all_tasks(self) -> List[Task]:
         """Return all tasks across every pet the owner has."""
-        tasks = []
-        for pet in self.pets:
-            tasks.extend(pet.get_tasks())
-        return tasks
+        return list(itertools.chain.from_iterable(pet.tasks for pet in self.pets))
 
     def get_all_pending_tasks(self) -> List[Task]:
         """Return all incomplete tasks across every pet the owner has."""
-        tasks = []
-        for pet in self.pets:
-            tasks.extend(pet.get_pending_tasks())
-        return tasks
+        return [t for t in self.get_all_tasks() if not t.is_completed]
 
     def edit(
         self,
@@ -219,9 +268,39 @@ class Owner:
         self.time_available_minutes = time_available
         self.preferences = preferences
 
-    def generate_schedule(self) -> Schedule:
-        """Build and return a sorted Schedule from all tasks across the owner's pets."""
+    def filter_tasks(
+        self,
+        is_completed: Optional[bool] = None,
+        pet_name: Optional[str] = None,
+    ) -> List[Task]:
+        """Return tasks filtered by completion status and/or pet name (case-insensitive)."""
+        results = []
+        for pet in self.pets:
+            if pet_name is not None and pet.name.lower() != pet_name.lower():
+                continue
+            for task in pet.tasks:
+                if is_completed is not None and task.is_completed != is_completed:
+                    continue
+                results.append(task)
+        return results
+
+    def generate_schedule(self) -> tuple:
+        """Build a sorted Schedule and return (schedule, warnings).
+
+        warnings is a list of human-readable strings, one per detected conflict.
+        It is empty when no conflicts exist.
+        """
         all_tasks = self.get_all_tasks()
         schedule = Schedule(schedule_id="", owner_id=self.owner_id, date=datetime.date.today())
         schedule.generate(self, self.pets, all_tasks)
-        return schedule
+
+        pet_name_by_id = {pet.pet_id: pet.name for pet in self.pets}
+        warnings = []
+        for a, b in schedule.get_conflicts():
+            a_pet = pet_name_by_id.get(a.pet_id, a.pet_id)
+            b_pet = pet_name_by_id.get(b.pet_id, b.pet_id)
+            warnings.append(
+                f"WARNING: '{a.description}' ({a_pet}, {a.start_time}) "
+                f"overlaps '{b.description}' ({b_pet}, {b.start_time})"
+            )
+        return schedule, warnings

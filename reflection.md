@@ -59,8 +59,10 @@
 **a. Constraints and priorities**
 
 - What constraints does your scheduler consider (for example: time, priority, preferences)?
+	+ (My Answer) first it considers priority then time
 - How did you decide which constraints mattered most?
-
+	+ (My Answer) intuitively some tasks just have more priority, so they should be done when scheduled at the same time
+	
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
