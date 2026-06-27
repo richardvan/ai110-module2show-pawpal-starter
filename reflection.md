@@ -66,7 +66,9 @@
 **b. Tradeoffs**
 
 - Describe one tradeoff your scheduler makes.
+	+ (My Answer) Conflict detection over prevention; the scheduler will add and tasks regardless of overlaps, it will warn after the fact instead of blocking from scheduling the conflicting task
 - Why is that tradeoff reasonable for this scenario?
+	+ (My Answer) The Owner should be able to see what task they want at what time, and basd on the warnings, can resolve the scheduling conflicts themselves rather than have the Scheduler make decisions for the Owner to resolve
 
 ---
 
