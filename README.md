@@ -75,8 +75,40 @@ pytest --cov
 Sample test output:
 
 ```
-# Paste your pytest output here
+========================================== test session starts ===========================================
+platform darwin -- Python 3.13.13, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/richardvan/codepath_learning/ai110-module2show-pawpal-starter
+plugins: anyio-4.14.1
+collected 12 items                                                                                       
+
+tests/test_pawpal.py ............                                                                  [100%]
+
+=========================================== 12 passed in 0.01s ===========================================
 ```
+
+### What the tests cover
+
+**Baseline**
+- A task starts as incomplete and becomes complete after calling `complete()`
+- Adding a task to a pet increases that pet's task count by 1
+
+**Recurrence logic**
+- Completing a daily task returns a new task scheduled for the next day, with the same pet, type, and priority
+- Completing a weekly task returns a new task scheduled 7 days later
+- Completing a one-time task returns nothing — no follow-up is created
+
+**Conflict detection**
+- Two tasks whose time windows overlap are flagged as a conflict
+- Two tasks that are back-to-back (one ends exactly when the next begins) are *not* flagged
+- Overlapping tasks for different pets are suppressed when `same_pet_only=True`
+
+**Sorting**
+- A low-priority task at an earlier time is still ordered after a high-priority task at a later time
+- Two tasks at the same priority level stay in chronological order relative to each other
+
+**Schedule integrity**
+- Completing a one-time task does not add anything to the schedule's task list
+- `generate()` only includes tasks belonging to the pets passed in — tasks for other pets are excluded
 
 ## 📐 Smarter Scheduling
 
