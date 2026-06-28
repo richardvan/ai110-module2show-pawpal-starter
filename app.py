@@ -24,6 +24,9 @@ if "task_counter" not in st.session_state:
 if "save_message" not in st.session_state:
     st.session_state.save_message = None
 
+if "last_saved" not in st.session_state:
+    st.session_state.last_saved = None
+
 # ── Edit Owner Profile ────────────────────────────────────────────────────────
 
 owner_profile_open = st.session_state.save_message != "owner_profile"
@@ -84,6 +87,10 @@ if pets:
             st.metric(label="🐾 Pet", value=pet.name)
     st.write(f"**Total pets:** {len(pets)}")
 
+    if st.session_state.last_saved:
+        st.success(st.session_state.last_saved)
+        st.session_state.last_saved = None
+
     edit_pet_open = st.session_state.save_message != "edit_pet"
     with st.expander("Edit a pet", expanded=edit_pet_open):
         edit_pet_name = st.selectbox("Select pet to edit", [p.name for p in pets], key="edit_pet_select")
@@ -118,8 +125,8 @@ if pets:
             new_notes = st.session_state[notes_key]
 
             edit_pet.edit(name=new_name, species=new_species, breed=new_breed, age_years=new_age, notes=new_notes)
+            st.session_state.last_saved = f"✓ Updated {new_name}'s profile!"
             st.session_state.save_message = "edit_pet"
-            st.toast(f"✓ Updated {new_name}'s profile!", icon="✅")
             st.rerun()
 
     delete_pet_open = st.session_state.save_message != "delete_pet"
@@ -129,8 +136,8 @@ if pets:
         st.warning(f"This will remove {del_pet.name} and all their tasks.")
         if st.button("Delete pet", type="primary"):
             del_pet.delete(st.session_state.owner)
+            st.session_state.last_saved = f"✓ Removed {del_pet_name}!"
             st.session_state.save_message = "delete_pet"
-            st.toast(f"✓ Removed {del_pet_name}!", icon="✅")
             st.rerun()
 else:
     st.info("No pets added yet.")
