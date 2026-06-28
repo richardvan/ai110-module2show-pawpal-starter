@@ -240,6 +240,48 @@ else:
 
 st.divider()
 
+# ── Filter Tasks ──────────────────────────────────────────────────────────────
+
+st.subheader("Filter & View Tasks")
+
+if st.session_state.owner.get_all_tasks():
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        filter_status = st.selectbox("Filter by status", ["All", "Pending", "Completed"])
+    with col_f2:
+        filter_pet = st.selectbox("Filter by pet", ["All"] + [p.name for p in pets])
+
+    is_completed_filter = None
+    if filter_status == "Completed":
+        is_completed_filter = True
+    elif filter_status == "Pending":
+        is_completed_filter = False
+
+    pet_name_filter = None if filter_pet == "All" else filter_pet
+
+    filtered = st.session_state.owner.filter_tasks(is_completed=is_completed_filter, pet_name=pet_name_filter)
+
+    if filtered:
+        st.write(f"**Filtered tasks ({len(filtered)}):**")
+        st.table([
+            {
+                "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                "Type": t.task_type.value,
+                "Start": str(t.start_time),
+                "Duration": t.duration_minutes,
+                "Priority": t.priority.value,
+                "Description": t.description,
+                "Done": t.is_completed,
+            }
+            for t in filtered
+        ])
+    else:
+        st.info("No tasks match the selected filters.")
+else:
+    st.info("No tasks scheduled yet.")
+
+st.divider()
+
 # ── Generate Schedule ─────────────────────────────────────────────────────────
 
 st.subheader("Generate Schedule")
