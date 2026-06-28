@@ -77,6 +77,14 @@ if pets:
             edit_pet.edit(name=new_name, species=new_species, breed=new_breed, age_years=new_age, notes=new_notes)
             st.success(f"Updated pet profile for {new_name}.")
             st.rerun()
+    with st.expander("Delete a pet"):
+        del_pet_name = st.selectbox("Select pet to delete", [p.name for p in pets], key="del_pet_select")
+        del_pet = next(p for p in pets if p.name == del_pet_name)
+        st.warning(f"This will remove {del_pet.name} and all their tasks.")
+        if st.button("Delete pet", type="primary"):
+            del_pet.delete(st.session_state.owner)
+            st.success(f"Removed {del_pet_name}.")
+            st.rerun()
 else:
     st.info("No pets added yet.")
 
