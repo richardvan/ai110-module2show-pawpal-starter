@@ -73,7 +73,11 @@ if st.button("Add pet"):
 
 pets = st.session_state.owner.pets
 if pets:
-    st.write(f"**{st.session_state.owner.name}'s pets:** " + ", ".join(p.name for p in pets))
+    pet_cols = st.columns(len(pets))
+    for i, pet in enumerate(pets):
+        with pet_cols[i]:
+            st.metric(label="🐾 Pet", value=pet.name)
+    st.write(f"**Total pets:** {len(pets)}")
     with st.expander("Edit a pet"):
         edit_pet_name = st.selectbox("Select pet to edit", [p.name for p in pets], key="edit_pet_select")
         edit_pet = next(p for p in pets if p.name == edit_pet_name)
@@ -164,19 +168,31 @@ else:
 
     all_tasks = st.session_state.owner.get_all_tasks()
     if all_tasks:
-        st.write("**All scheduled tasks:**")
-        st.table([
-            {
-                "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
-                "Type": t.task_type.value,
-                "Start": str(t.start_time),
-                "Duration": t.duration_minutes,
-                "Priority": t.priority.value,
-                "Description": t.description,
-                "Done": t.is_completed,
-            }
-            for t in all_tasks
-        ])
+        col_t1, col_t2, col_t3 = st.columns(3)
+        with col_t1:
+            st.metric("Total Tasks", len(all_tasks))
+        with col_t2:
+            st.metric("Completed", sum(1 for t in all_tasks if t.is_completed))
+        with col_t3:
+            st.metric("Pending", sum(1 for t in all_tasks if not t.is_completed))
+
+        st.subheader("All Scheduled Tasks")
+        st.dataframe(
+            [
+                {
+                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                    "Type": t.task_type.value.replace("_", " ").title(),
+                    "Start": str(t.start_time),
+                    "Duration (min)": t.duration_minutes,
+                    "Priority": t.priority.value.upper(),
+                    "Description": t.description,
+                    "✓": "✓" if t.is_completed else "○",
+                }
+                for t in all_tasks
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
         with st.expander("Edit a task"):
             task_display = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in all_tasks]
             sel_task_display = st.selectbox("Select task to edit", task_display, key="edit_task_select")
@@ -280,41 +296,49 @@ if st.session_state.owner.get_all_tasks():
     filtered = st.session_state.owner.filter_tasks(is_completed=is_completed_filter, pet_name=pet_name_filter)
 
     if filtered:
-        st.write(f"**Filtered tasks ({len(filtered)}):**")
-        st.table([
-            {
-                "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
-                "Type": t.task_type.value,
-                "Start": str(t.start_time),
-                "Duration": t.duration_minutes,
-                "Priority": t.priority.value,
-                "Description": t.description,
-                "Done": t.is_completed,
-            }
-            for t in filtered
-        ])
+        st.success(f"Found {len(filtered)} matching task(s)")
+        st.dataframe(
+            [
+                {
+                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                    "Type": t.task_type.value.replace("_", " ").title(),
+                    "Start": str(t.start_time),
+                    "Duration (min)": t.duration_minutes,
+                    "Priority": t.priority.value.upper(),
+                    "Description": t.description,
+                    "✓": "✓" if t.is_completed else "○",
+                }
+                for t in filtered
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
     else:
-        st.info("No tasks match the selected filters.")
+        st.warning("No tasks match the selected filters.")
 else:
     st.info("No tasks scheduled yet.")
 
 with st.expander("View pending tasks only"):
     pending = st.session_state.owner.get_all_pending_tasks()
     if pending:
-        st.write(f"**Pending tasks ({len(pending)}):**")
-        st.table([
-            {
-                "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
-                "Type": t.task_type.value,
-                "Start": str(t.start_time),
-                "Duration": t.duration_minutes,
-                "Priority": t.priority.value,
-                "Description": t.description,
-            }
-            for t in pending
-        ])
+        st.info(f"📋 {len(pending)} pending task(s)")
+        st.dataframe(
+            [
+                {
+                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                    "Type": t.task_type.value.replace("_", " ").title(),
+                    "Start": str(t.start_time),
+                    "Duration (min)": t.duration_minutes,
+                    "Priority": t.priority.value.upper(),
+                    "Description": t.description,
+                }
+                for t in pending
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
     else:
-        st.info("No pending tasks!")
+        st.success("✨ All tasks completed!")
 
 st.divider()
 
@@ -329,9 +353,15 @@ if st.button("Generate schedule"):
         st.warning("Add at least one task before generating a schedule.")
     else:
         schedule, warnings = st.session_state.owner.generate_schedule()
-        st.text(schedule.summarize())
-        for w in warnings:
-            st.warning(w)
+        with st.container(border=True):
+            st.code(schedule.summarize(), language="text")
+        if warnings:
+            st.divider()
+            st.subheader("⚠️ Schedule Conflicts Detected")
+            for w in warnings:
+                st.warning(w)
+        else:
+            st.success("✓ No schedule conflicts detected!")
 
 if st.session_state.owner.get_all_tasks() and pets:
     schedule, _ = st.session_state.owner.generate_schedule()
@@ -342,20 +372,24 @@ if st.session_state.owner.get_all_tasks() and pets:
         pet_tasks = schedule.get_tasks_by_pet(sel_pet.pet_id)
 
         if pet_tasks:
-            st.write(f"**Tasks for {sel_pet_name} ({len(pet_tasks)}):**")
-            st.table([
-                {
-                    "Type": t.task_type.value,
-                    "Start": str(t.start_time),
-                    "Duration": t.duration_minutes,
-                    "Priority": t.priority.value,
-                    "Description": t.description,
-                    "Done": t.is_completed,
-                }
-                for t in pet_tasks
-            ])
+            st.info(f"🐾 {len(pet_tasks)} task(s) for {sel_pet_name}")
+            st.dataframe(
+                [
+                    {
+                        "Type": t.task_type.value.replace("_", " ").title(),
+                        "Start": str(t.start_time),
+                        "Duration (min)": t.duration_minutes,
+                        "Priority": t.priority.value.upper(),
+                        "Description": t.description,
+                        "✓": "✓" if t.is_completed else "○",
+                    }
+                    for t in pet_tasks
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
         else:
-            st.info(f"No tasks scheduled for {sel_pet_name}.")
+            st.warning(f"No tasks scheduled for {sel_pet_name}.")
 
     with st.expander("View schedule by task type"):
         sel_type = st.selectbox("Select task type", list(TaskType),
@@ -364,20 +398,24 @@ if st.session_state.owner.get_all_tasks() and pets:
         type_tasks = schedule.get_tasks_by_type(sel_type)
 
         if type_tasks:
-            st.write(f"**{sel_type.value.replace('_', ' ').title()} tasks ({len(type_tasks)}):**")
-            st.table([
-                {
-                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
-                    "Start": str(t.start_time),
-                    "Duration": t.duration_minutes,
-                    "Priority": t.priority.value,
-                    "Description": t.description,
-                    "Done": t.is_completed,
-                }
-                for t in type_tasks
-            ])
+            st.info(f"📌 {len(type_tasks)} {sel_type.value.replace('_', ' ').lower()} task(s)")
+            st.dataframe(
+                [
+                    {
+                        "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                        "Start": str(t.start_time),
+                        "Duration (min)": t.duration_minutes,
+                        "Priority": t.priority.value.upper(),
+                        "Description": t.description,
+                        "✓": "✓" if t.is_completed else "○",
+                    }
+                    for t in type_tasks
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
         else:
-            st.info(f"No {sel_type.value.replace('_', ' ').lower()} tasks scheduled.")
+            st.warning(f"No {sel_type.value.replace('_', ' ').lower()} tasks scheduled.")
 
     with st.expander("View schedule by priority"):
         sel_priority = st.selectbox("Select priority", list(Priority),
@@ -386,20 +424,25 @@ if st.session_state.owner.get_all_tasks() and pets:
         priority_tasks = schedule.get_tasks_by_priority(sel_priority)
 
         if priority_tasks:
-            st.write(f"**{sel_priority.value.title()} priority tasks ({len(priority_tasks)}):**")
-            st.table([
-                {
-                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
-                    "Type": t.task_type.value,
-                    "Start": str(t.start_time),
-                    "Duration": t.duration_minutes,
-                    "Description": t.description,
-                    "Done": t.is_completed,
-                }
-                for t in priority_tasks
-            ])
+            priority_emoji = "🔴" if sel_priority.value == "high" else "🟡" if sel_priority.value == "medium" else "🟢"
+            st.info(f"{priority_emoji} {len(priority_tasks)} {sel_priority.value.upper()} priority task(s)")
+            st.dataframe(
+                [
+                    {
+                        "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                        "Type": t.task_type.value.replace("_", " ").title(),
+                        "Start": str(t.start_time),
+                        "Duration (min)": t.duration_minutes,
+                        "Description": t.description,
+                        "✓": "✓" if t.is_completed else "○",
+                    }
+                    for t in priority_tasks
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
         else:
-            st.info(f"No {sel_priority.value.lower()} priority tasks scheduled.")
+            st.warning(f"No {sel_priority.value.lower()} priority tasks scheduled.")
 
     with st.expander("Complete task from schedule"):
         incomplete_sched_tasks = [t for t in schedule.tasks if not t.is_completed]
