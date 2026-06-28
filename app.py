@@ -6,6 +6,24 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
 
+# ── Edit Owner Profile ────────────────────────────────────────────────────────
+
+with st.expander("Edit owner profile"):
+    col_o1, col_o2 = st.columns(2)
+    with col_o1:
+        owner_name = st.text_input("Owner name", value=st.session_state.owner.name, key="owner_name")
+    with col_o2:
+        time_available = st.number_input("Time available (minutes/day)", min_value=1, max_value=1440,
+                                        value=st.session_state.owner.time_available_minutes, key="owner_time")
+
+    prefs_input = st.text_input("Care preferences (comma-separated)", value=", ".join(st.session_state.owner.preferences), key="owner_prefs")
+
+    if st.button("Save owner profile"):
+        prefs = [p.strip() for p in prefs_input.split(",") if p.strip()]
+        st.session_state.owner.edit(name=owner_name, time_available=time_available, preferences=prefs)
+        st.success("Owner profile updated.")
+        st.rerun()
+
 # ── Session state initialization ──────────────────────────────────────────────
 
 if "owner" not in st.session_state:
