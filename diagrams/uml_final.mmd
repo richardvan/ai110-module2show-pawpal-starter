@@ -1,0 +1,98 @@
+classDiagram
+    class Owner {
+        +String owner_id
+        +String name
+        +int time_available_minutes
+        +List~String~ preferences
+        +add_pet(pet: Pet) void
+        +remove_pet(pet: Pet) void
+        +get_pet(pet_id: str) Pet|null
+        +edit(name, time_available, preferences) void
+        +get_all_tasks() List~Task~
+        +get_all_pending_tasks() List~Task~
+        +filter_tasks(is_completed, pet_name) List~Task~
+        +generate_schedule() (Schedule, List~String~)
+    }
+
+    class Pet {
+        +String pet_id
+        +String name
+        +String owner_id
+        +String species
+        +String breed
+        +float age_years
+        +String notes
+        +List~Task~ tasks
+        +add(owner: Owner) void
+        +edit(name, species, breed, age_years, notes) void
+        +delete(owner: Owner) void
+        +get_tasks() List~Task~
+        +get_pending_tasks() List~Task~
+    }
+
+    class Task {
+        +String task_id
+        +String pet_id
+        +TaskType task_type
+        +Time start_time
+        +int duration_minutes
+        +Priority priority
+        +String description
+        +Frequency frequency
+        +bool is_completed
+        +String explanation
+        +add(pet: Pet) void
+        +edit(start_time, duration, priority, task_type, description, frequency) void
+        +delete(pet: Pet) void
+        +complete(on_date: Optional~date~) Task|null
+    }
+
+    class Schedule {
+        +String schedule_id
+        +String owner_id
+        +Date date
+        +List~Task~ tasks
+        +String generation_explanation
+        +generate(owner, pets, tasks) void
+        +complete_task(task: Task) Task|null
+        +get_todays_tasks() List~Task~
+        +get_tasks_by_pet(pet_id: str) List~Task~
+        +get_tasks_by_type(task_type: TaskType) List~Task~
+        +get_tasks_by_priority(priority: Priority) List~Task~
+        +get_conflicts(same_pet_only: bool) List~Tuple~
+        +sort_by_time() void
+        +reorder() void
+        +summarize() String
+    }
+
+    class TaskType {
+        <<enumeration>>
+        WALK_PET
+        FEED_FOOD
+        GIVE_MEDS
+        PROVIDE_ENRICHMENT
+        GROOM
+    }
+
+    class Priority {
+        <<enumeration>>
+        HIGH
+        MEDIUM
+        LOW
+    }
+
+    class Frequency {
+        <<enumeration>>
+        ONCE
+        DAILY
+        WEEKLY
+        MONTHLY
+    }
+
+    Owner "1" *-- "1..*" Pet : owns
+    Pet "1" o-- "0..*" Task : has
+    Owner "1" --> "1" Schedule : generates
+    Schedule "1" o-- "0..*" Task : organizes
+    Task --> TaskType : categorized by
+    Task --> Priority : ranked by
+    Task --> Frequency : has
