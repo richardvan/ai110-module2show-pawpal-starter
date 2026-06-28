@@ -199,15 +199,20 @@ else:
             sel_task_idx = task_display.index(sel_task_display)
             sel_task = all_tasks[sel_task_idx]
 
+            task_types = list(TaskType)
+            task_type_idx = next((i for i, t in enumerate(task_types) if t == sel_task.task_type), 0)
+            priorities = list(Priority)
+            priority_idx = next((i for i, p in enumerate(priorities) if p == sel_task.priority), 0)
+
             col_et1, col_et2 = st.columns(2)
             with col_et1:
-                new_task_type = st.selectbox("Task type", list(TaskType),
-                                            index=list(TaskType).index(sel_task.task_type),
+                new_task_type = st.selectbox("Task type", task_types,
+                                            index=task_type_idx,
                                             key="edit_task_type",
                                             format_func=lambda t: t.value.replace("_", " ").title())
             with col_et2:
-                new_priority = st.selectbox("Priority", list(Priority),
-                                           index=list(Priority).index(sel_task.priority),
+                new_priority = st.selectbox("Priority", priorities,
+                                           index=priority_idx,
                                            key="edit_task_priority",
                                            format_func=lambda p: p.value.title())
 
@@ -221,8 +226,10 @@ else:
                 new_duration = st.number_input("Duration (minutes)", min_value=1, max_value=240,
                                               value=sel_task.duration_minutes, key="edit_task_duration")
 
-            new_freq = st.selectbox("Frequency", list(Frequency),
-                                   index=list(Frequency).index(sel_task.frequency),
+            frequencies = list(Frequency)
+            freq_idx = next((i for i, f in enumerate(frequencies) if f == sel_task.frequency), 0)
+            new_freq = st.selectbox("Frequency", frequencies,
+                                   index=freq_idx,
                                    key="edit_task_freq",
                                    format_func=lambda f: f.value.title())
             new_desc = st.text_input("Description", value=sel_task.description, key="edit_task_desc")
