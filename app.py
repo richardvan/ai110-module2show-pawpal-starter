@@ -56,6 +56,27 @@ if st.button("Add pet"):
 pets = st.session_state.owner.pets
 if pets:
     st.write(f"**{st.session_state.owner.name}'s pets:** " + ", ".join(p.name for p in pets))
+    with st.expander("Edit a pet"):
+        edit_pet_name = st.selectbox("Select pet to edit", [p.name for p in pets], key="edit_pet_select")
+        edit_pet = next(p for p in pets if p.name == edit_pet_name)
+        col_e1, col_e2, col_e3 = st.columns(3)
+        with col_e1:
+            new_name = st.text_input("Name", value=edit_pet.name, key="edit_pet_name")
+        with col_e2:
+            new_species = st.selectbox("Species", ["dog", "cat", "other"],
+                                       index=["dog", "cat", "other"].index(edit_pet.species) if edit_pet.species in ["dog", "cat", "other"] else 2,
+                                       key="edit_pet_species")
+        with col_e3:
+            new_breed = st.text_input("Breed", value=edit_pet.breed, key="edit_pet_breed")
+        col_e4, col_e5 = st.columns(2)
+        with col_e4:
+            new_age = st.number_input("Age (years)", min_value=0.0, max_value=30.0, value=edit_pet.age_years, step=0.5, key="edit_pet_age")
+        with col_e5:
+            new_notes = st.text_input("Notes", value=edit_pet.notes, key="edit_pet_notes")
+        if st.button("Save pet changes"):
+            edit_pet.edit(name=new_name, species=new_species, breed=new_breed, age_years=new_age, notes=new_notes)
+            st.success(f"Updated pet profile for {new_name}.")
+            st.rerun()
 else:
     st.info("No pets added yet.")
 
@@ -145,5 +166,7 @@ if st.button("Generate schedule"):
     elif not st.session_state.owner.get_all_tasks():
         st.warning("Add at least one task before generating a schedule.")
     else:
-        schedule = st.session_state.owner.generate_schedule()
+        schedule, warnings = st.session_state.owner.generate_schedule()
         st.text(schedule.summarize())
+        for w in warnings:
+            st.warning(w)
