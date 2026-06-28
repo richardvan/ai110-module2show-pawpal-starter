@@ -77,7 +77,12 @@ if st.button("Add pet"):
         notes=notes,
     )
     st.session_state.owner.add_pet(new_pet)
+    st.session_state.last_saved = None
     st.success(f"Added {pet_name} to {st.session_state.owner.name}'s pets.")
+
+if st.session_state.last_saved:
+    st.success(st.session_state.last_saved)
+    st.session_state.last_saved = None
 
 pets = st.session_state.owner.pets
 if pets:
@@ -86,10 +91,6 @@ if pets:
         with pet_cols[i]:
             st.metric(label="🐾 Pet", value=pet.name)
     st.write(f"**Total pets:** {len(pets)}")
-
-    if st.session_state.last_saved:
-        st.success(st.session_state.last_saved)
-        st.session_state.last_saved = None
 
     edit_pet_open = st.session_state.save_message != "edit_pet"
     with st.expander("Edit a pet", expanded=edit_pet_open):
