@@ -314,3 +314,89 @@ if st.button("Generate schedule"):
         st.text(schedule.summarize())
         for w in warnings:
             st.warning(w)
+
+if st.session_state.owner.get_all_tasks() and pets:
+    schedule, _ = st.session_state.owner.generate_schedule()
+
+    with st.expander("View schedule by pet"):
+        sel_pet_name = st.selectbox("Select pet", [p.name for p in pets], key="sched_pet_select")
+        sel_pet = next(p for p in pets if p.name == sel_pet_name)
+        pet_tasks = schedule.get_tasks_by_pet(sel_pet.pet_id)
+
+        if pet_tasks:
+            st.write(f"**Tasks for {sel_pet_name} ({len(pet_tasks)}):**")
+            st.table([
+                {
+                    "Type": t.task_type.value,
+                    "Start": str(t.start_time),
+                    "Duration": t.duration_minutes,
+                    "Priority": t.priority.value,
+                    "Description": t.description,
+                    "Done": t.is_completed,
+                }
+                for t in pet_tasks
+            ])
+        else:
+            st.info(f"No tasks scheduled for {sel_pet_name}.")
+
+    with st.expander("View schedule by task type"):
+        sel_type = st.selectbox("Select task type", list(TaskType),
+                               format_func=lambda t: t.value.replace("_", " ").title(),
+                               key="sched_type_select")
+        type_tasks = schedule.get_tasks_by_type(sel_type)
+
+        if type_tasks:
+            st.write(f"**{sel_type.value.replace('_', ' ').title()} tasks ({len(type_tasks)}):**")
+            st.table([
+                {
+                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                    "Start": str(t.start_time),
+                    "Duration": t.duration_minutes,
+                    "Priority": t.priority.value,
+                    "Description": t.description,
+                    "Done": t.is_completed,
+                }
+                for t in type_tasks
+            ])
+        else:
+            st.info(f"No {sel_type.value.replace('_', ' ').lower()} tasks scheduled.")
+
+    with st.expander("View schedule by priority"):
+        sel_priority = st.selectbox("Select priority", list(Priority),
+                                   format_func=lambda p: p.value.title(),
+                                   key="sched_priority_select")
+        priority_tasks = schedule.get_tasks_by_priority(sel_priority)
+
+        if priority_tasks:
+            st.write(f"**{sel_priority.value.title()} priority tasks ({len(priority_tasks)}):**")
+            st.table([
+                {
+                    "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                    "Type": t.task_type.value,
+                    "Start": str(t.start_time),
+                    "Duration": t.duration_minutes,
+                    "Description": t.description,
+                    "Done": t.is_completed,
+                }
+                for t in priority_tasks
+            ])
+        else:
+            st.info(f"No {sel_priority.value.lower()} priority tasks scheduled.")
+
+    with st.expander("Complete task from schedule"):
+        incomplete_sched_tasks = [t for t in schedule.tasks if not t.is_completed]
+        if incomplete_sched_tasks:
+            task_display_sched = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in incomplete_sched_tasks]
+            sel_sched_task_display = st.selectbox("Select task to mark complete", task_display_sched, key="sched_comp_select")
+            sel_sched_task_idx = task_display_sched.index(sel_sched_task_display)
+            sel_sched_task = incomplete_sched_tasks[sel_sched_task_idx]
+
+            if st.button("Mark complete in schedule", key="sched_complete_btn"):
+                next_task = schedule.complete_task(sel_sched_task)
+                if next_task:
+                    st.success(f"Marked complete. Next occurrence added to schedule.")
+                else:
+                    st.success(f"Marked complete.")
+                st.rerun()
+        else:
+            st.info("All schedule tasks are complete!")
