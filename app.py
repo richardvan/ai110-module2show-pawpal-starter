@@ -216,6 +216,25 @@ else:
                 sel_task_del.delete(pet_of_task)
                 st.success(f"Removed task.")
                 st.rerun()
+        with st.expander("Mark task complete"):
+            incomplete_tasks = [t for t in all_tasks if not t.is_completed]
+            if incomplete_tasks:
+                task_display_comp = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in incomplete_tasks]
+                sel_task_comp_display = st.selectbox("Select task to mark complete", task_display_comp, key="comp_task_select")
+                sel_task_comp_idx = task_display_comp.index(sel_task_comp_display)
+                sel_task_comp = incomplete_tasks[sel_task_comp_idx]
+
+                if st.button("Mark complete", key="complete_task_btn"):
+                    next_task = sel_task_comp.complete()
+                    if next_task:
+                        sel_pet = next(p for p in pets if p.pet_id == sel_task_comp.pet_id)
+                        next_task.add(sel_pet)
+                        st.success(f"Marked complete. Next occurrence scheduled.")
+                    else:
+                        st.success(f"Marked complete.")
+                    st.rerun()
+            else:
+                st.info("All tasks are already complete!")
     else:
         st.info("No tasks scheduled yet.")
 
