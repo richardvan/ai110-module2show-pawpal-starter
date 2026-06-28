@@ -159,6 +159,51 @@ else:
             }
             for t in all_tasks
         ])
+        with st.expander("Edit a task"):
+            task_display = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in all_tasks]
+            sel_task_display = st.selectbox("Select task to edit", task_display, key="edit_task_select")
+            sel_task_idx = task_display.index(sel_task_display)
+            sel_task = all_tasks[sel_task_idx]
+
+            col_et1, col_et2 = st.columns(2)
+            with col_et1:
+                new_task_type = st.selectbox("Task type", list(TaskType),
+                                            index=list(TaskType).index(sel_task.task_type),
+                                            key="edit_task_type",
+                                            format_func=lambda t: t.value.replace("_", " ").title())
+            with col_et2:
+                new_priority = st.selectbox("Priority", list(Priority),
+                                           index=list(Priority).index(sel_task.priority),
+                                           key="edit_task_priority",
+                                           format_func=lambda p: p.value.title())
+
+            col_et3, col_et4 = st.columns(2)
+            with col_et3:
+                new_start_hour = st.number_input("Start hour (0–23)", min_value=0, max_value=23,
+                                                 value=sel_task.start_time.hour, key="edit_task_hour")
+                new_start_minute = st.number_input("Start minute", min_value=0, max_value=59,
+                                                   value=sel_task.start_time.minute, step=15, key="edit_task_minute")
+            with col_et4:
+                new_duration = st.number_input("Duration (minutes)", min_value=1, max_value=240,
+                                              value=sel_task.duration_minutes, key="edit_task_duration")
+
+            new_freq = st.selectbox("Frequency", list(Frequency),
+                                   index=list(Frequency).index(sel_task.frequency),
+                                   key="edit_task_freq",
+                                   format_func=lambda f: f.value.title())
+            new_desc = st.text_input("Description", value=sel_task.description, key="edit_task_desc")
+
+            if st.button("Save task changes"):
+                sel_task.edit(
+                    start_time=datetime.time(int(new_start_hour), int(new_start_minute)),
+                    duration=int(new_duration),
+                    priority=new_priority,
+                    task_type=new_task_type,
+                    description=new_desc,
+                    frequency=new_freq
+                )
+                st.success(f"Updated task.")
+                st.rerun()
     else:
         st.info("No tasks scheduled yet.")
 
