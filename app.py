@@ -6,6 +6,21 @@ st.set_page_config(page_title="PawPal+", page_icon="🐾", layout="centered")
 
 st.title("🐾 PawPal+")
 
+# ── Session state initialization ──────────────────────────────────────────────
+
+if "owner" not in st.session_state:
+    st.session_state.owner = Owner(
+        owner_id="owner1",
+        name="Jordan",
+        time_available_minutes=120,
+    )
+
+if "pet_counter" not in st.session_state:
+    st.session_state.pet_counter = 0
+
+if "task_counter" not in st.session_state:
+    st.session_state.task_counter = 0
+
 # ── Edit Owner Profile ────────────────────────────────────────────────────────
 
 with st.expander("Edit owner profile"):
@@ -23,21 +38,6 @@ with st.expander("Edit owner profile"):
         st.session_state.owner.edit(name=owner_name, time_available=time_available, preferences=prefs)
         st.success("Owner profile updated.")
         st.rerun()
-
-# ── Session state initialization ──────────────────────────────────────────────
-
-if "owner" not in st.session_state:
-    st.session_state.owner = Owner(
-        owner_id="owner1",
-        name="Jordan",
-        time_available_minutes=120,
-    )
-
-if "pet_counter" not in st.session_state:
-    st.session_state.pet_counter = 0
-
-if "task_counter" not in st.session_state:
-    st.session_state.task_counter = 0
 
 # ── Add a Pet ─────────────────────────────────────────────────────────────────
 
