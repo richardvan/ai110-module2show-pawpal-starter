@@ -280,6 +280,24 @@ if st.session_state.owner.get_all_tasks():
 else:
     st.info("No tasks scheduled yet.")
 
+with st.expander("View pending tasks only"):
+    pending = st.session_state.owner.get_all_pending_tasks()
+    if pending:
+        st.write(f"**Pending tasks ({len(pending)}):**")
+        st.table([
+            {
+                "Pet": next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id),
+                "Type": t.task_type.value,
+                "Start": str(t.start_time),
+                "Duration": t.duration_minutes,
+                "Priority": t.priority.value,
+                "Description": t.description,
+            }
+            for t in pending
+        ])
+    else:
+        st.info("No pending tasks!")
+
 st.divider()
 
 # ── Generate Schedule ─────────────────────────────────────────────────────────
