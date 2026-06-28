@@ -204,6 +204,18 @@ else:
                 )
                 st.success(f"Updated task.")
                 st.rerun()
+        with st.expander("Delete a task"):
+            task_display_del = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in all_tasks]
+            sel_task_del_display = st.selectbox("Select task to delete", task_display_del, key="del_task_select")
+            sel_task_del_idx = task_display_del.index(sel_task_del_display)
+            sel_task_del = all_tasks[sel_task_del_idx]
+            pet_of_task = next(p for p in pets if p.pet_id == sel_task_del.pet_id)
+
+            st.warning(f"This will remove the task '{sel_task_del.task_type.value}' from {pet_of_task.name}.")
+            if st.button("Delete task", type="primary", key="delete_task_btn"):
+                sel_task_del.delete(pet_of_task)
+                st.success(f"Removed task.")
+                st.rerun()
     else:
         st.info("No tasks scheduled yet.")
 
