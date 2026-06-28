@@ -88,20 +88,21 @@ if pets:
     with st.expander("Edit a pet", expanded=edit_pet_open):
         edit_pet_name = st.selectbox("Select pet to edit", [p.name for p in pets], key="edit_pet_select")
         edit_pet = next(p for p in pets if p.name == edit_pet_name)
+
         col_e1, col_e2, col_e3 = st.columns(3)
         with col_e1:
-            new_name = st.text_input("Name", value=edit_pet.name, key="edit_pet_name")
+            new_name = st.text_input("Name", value=edit_pet.name, key=f"edit_pet_name_{edit_pet.pet_id}")
         with col_e2:
             new_species = st.selectbox("Species", ["dog", "cat", "other"],
                                        index=["dog", "cat", "other"].index(edit_pet.species) if edit_pet.species in ["dog", "cat", "other"] else 2,
-                                       key="edit_pet_species")
+                                       key=f"edit_pet_species_{edit_pet.pet_id}")
         with col_e3:
-            new_breed = st.text_input("Breed", value=edit_pet.breed, key="edit_pet_breed")
+            new_breed = st.text_input("Breed", value=edit_pet.breed, key=f"edit_pet_breed_{edit_pet.pet_id}")
         col_e4, col_e5 = st.columns(2)
         with col_e4:
-            new_age = st.number_input("Age (years)", min_value=0.0, max_value=30.0, value=edit_pet.age_years, step=0.5, key="edit_pet_age")
+            new_age = st.number_input("Age (years)", min_value=0.0, max_value=30.0, value=edit_pet.age_years, step=0.5, key=f"edit_pet_age_{edit_pet.pet_id}")
         with col_e5:
-            new_notes = st.text_input("Notes", value=edit_pet.notes, key="edit_pet_notes")
+            new_notes = st.text_input("Notes", value=edit_pet.notes, key=f"edit_pet_notes_{edit_pet.pet_id}")
         if st.button("Save pet changes"):
             edit_pet.edit(name=new_name, species=new_species, breed=new_breed, age_years=new_age, notes=new_notes)
             st.session_state.save_message = "edit_pet"
