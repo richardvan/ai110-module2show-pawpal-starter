@@ -41,7 +41,7 @@ with st.expander("Edit owner profile", expanded=owner_profile_open):
         prefs = [p.strip() for p in prefs_input.split(",") if p.strip()]
         st.session_state.owner.edit(name=owner_name, time_available=time_available, preferences=prefs)
         st.session_state.save_message = "owner_profile"
-        st.success("✓ Owner profile updated successfully!")
+        st.toast("✓ Owner profile updated!", icon="✅")
         st.rerun()
 
 # ── Add a Pet ─────────────────────────────────────────────────────────────────
@@ -119,7 +119,7 @@ if pets:
 
             edit_pet.edit(name=new_name, species=new_species, breed=new_breed, age_years=new_age, notes=new_notes)
             st.session_state.save_message = "edit_pet"
-            st.success(f"✓ Updated {new_name}'s profile!")
+            st.toast(f"✓ Updated {new_name}'s profile!", icon="✅")
             st.rerun()
 
     delete_pet_open = st.session_state.save_message != "delete_pet"
@@ -130,7 +130,7 @@ if pets:
         if st.button("Delete pet", type="primary"):
             del_pet.delete(st.session_state.owner)
             st.session_state.save_message = "delete_pet"
-            st.success(f"✓ Removed {del_pet_name}!")
+            st.toast(f"✓ Removed {del_pet_name}!", icon="✅")
             st.rerun()
 else:
     st.info("No pets added yet.")
@@ -271,7 +271,7 @@ else:
                     frequency=new_freq
                 )
                 st.session_state.save_message = "edit_task"
-                st.success(f"✓ Task updated successfully!")
+                st.toast(f"✓ Task updated!", icon="✅")
                 st.rerun()
 
         delete_task_open = st.session_state.save_message != "delete_task"
@@ -286,7 +286,7 @@ else:
             if st.button("Delete task", type="primary", key="delete_task_btn"):
                 sel_task_del.delete(pet_of_task)
                 st.session_state.save_message = "delete_task"
-                st.success(f"✓ Task removed!")
+                st.toast(f"✓ Task removed!", icon="✅")
                 st.rerun()
 
         complete_task_open = st.session_state.save_message != "complete_task"
@@ -304,9 +304,9 @@ else:
                     if next_task:
                         sel_pet = next(p for p in pets if p.pet_id == sel_task_comp.pet_id)
                         next_task.add(sel_pet)
-                        st.success(f"✓ Task marked complete. Next occurrence scheduled!")
+                        st.toast(f"✓ Task marked complete. Next occurrence scheduled!", icon="✅")
                     else:
-                        st.success(f"✓ Task marked complete!")
+                        st.toast(f"✓ Task marked complete!", icon="✅")
                     st.rerun()
             else:
                 st.info("All tasks are already complete!")
