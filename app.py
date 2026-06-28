@@ -21,9 +21,13 @@ if "pet_counter" not in st.session_state:
 if "task_counter" not in st.session_state:
     st.session_state.task_counter = 0
 
+if "save_message" not in st.session_state:
+    st.session_state.save_message = None
+
 # ── Edit Owner Profile ────────────────────────────────────────────────────────
 
-with st.expander("Edit owner profile"):
+owner_profile_open = st.session_state.save_message != "owner_profile"
+with st.expander("Edit owner profile", expanded=owner_profile_open):
     col_o1, col_o2 = st.columns(2)
     with col_o1:
         owner_name = st.text_input("Owner name", value=st.session_state.owner.name, key="owner_name")
@@ -36,7 +40,8 @@ with st.expander("Edit owner profile"):
     if st.button("Save owner profile"):
         prefs = [p.strip() for p in prefs_input.split(",") if p.strip()]
         st.session_state.owner.edit(name=owner_name, time_available=time_available, preferences=prefs)
-        st.success("Owner profile updated.")
+        st.session_state.save_message = "owner_profile"
+        st.success("✓ Owner profile updated successfully!")
         st.rerun()
 
 # ── Add a Pet ─────────────────────────────────────────────────────────────────
@@ -78,7 +83,9 @@ if pets:
         with pet_cols[i]:
             st.metric(label="🐾 Pet", value=pet.name)
     st.write(f"**Total pets:** {len(pets)}")
-    with st.expander("Edit a pet"):
+
+    edit_pet_open = st.session_state.save_message != "edit_pet"
+    with st.expander("Edit a pet", expanded=edit_pet_open):
         edit_pet_name = st.selectbox("Select pet to edit", [p.name for p in pets], key="edit_pet_select")
         edit_pet = next(p for p in pets if p.name == edit_pet_name)
         col_e1, col_e2, col_e3 = st.columns(3)
@@ -97,15 +104,19 @@ if pets:
             new_notes = st.text_input("Notes", value=edit_pet.notes, key="edit_pet_notes")
         if st.button("Save pet changes"):
             edit_pet.edit(name=new_name, species=new_species, breed=new_breed, age_years=new_age, notes=new_notes)
-            st.success(f"Updated pet profile for {new_name}.")
+            st.session_state.save_message = "edit_pet"
+            st.success(f"✓ Updated {new_name}'s profile!")
             st.rerun()
-    with st.expander("Delete a pet"):
+
+    delete_pet_open = st.session_state.save_message != "delete_pet"
+    with st.expander("Delete a pet", expanded=delete_pet_open):
         del_pet_name = st.selectbox("Select pet to delete", [p.name for p in pets], key="del_pet_select")
         del_pet = next(p for p in pets if p.name == del_pet_name)
         st.warning(f"This will remove {del_pet.name} and all their tasks.")
         if st.button("Delete pet", type="primary"):
             del_pet.delete(st.session_state.owner)
-            st.success(f"Removed {del_pet_name}.")
+            st.session_state.save_message = "delete_pet"
+            st.success(f"✓ Removed {del_pet_name}!")
             st.rerun()
 else:
     st.info("No pets added yet.")
@@ -193,7 +204,9 @@ else:
             use_container_width=True,
             hide_index=True,
         )
-        with st.expander("Edit a task"):
+
+        edit_task_open = st.session_state.save_message != "edit_task"
+        with st.expander("Edit a task", expanded=edit_task_open):
             task_display = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in all_tasks]
             sel_task_display = st.selectbox("Select task to edit", task_display, key="edit_task_select")
             sel_task_idx = task_display.index(sel_task_display)
@@ -243,9 +256,12 @@ else:
                     description=new_desc,
                     frequency=new_freq
                 )
-                st.success(f"Updated task.")
+                st.session_state.save_message = "edit_task"
+                st.success(f"✓ Task updated successfully!")
                 st.rerun()
-        with st.expander("Delete a task"):
+
+        delete_task_open = st.session_state.save_message != "delete_task"
+        with st.expander("Delete a task", expanded=delete_task_open):
             task_display_del = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in all_tasks]
             sel_task_del_display = st.selectbox("Select task to delete", task_display_del, key="del_task_select")
             sel_task_del_idx = task_display_del.index(sel_task_del_display)
@@ -255,9 +271,12 @@ else:
             st.warning(f"This will remove the task '{sel_task_del.task_type.value}' from {pet_of_task.name}.")
             if st.button("Delete task", type="primary", key="delete_task_btn"):
                 sel_task_del.delete(pet_of_task)
-                st.success(f"Removed task.")
+                st.session_state.save_message = "delete_task"
+                st.success(f"✓ Task removed!")
                 st.rerun()
-        with st.expander("Mark task complete"):
+
+        complete_task_open = st.session_state.save_message != "complete_task"
+        with st.expander("Mark task complete", expanded=complete_task_open):
             incomplete_tasks = [t for t in all_tasks if not t.is_completed]
             if incomplete_tasks:
                 task_display_comp = [f"{next((p.name for p in pets if p.pet_id == t.pet_id), t.pet_id)} - {t.task_type.value} @ {t.start_time}" for t in incomplete_tasks]
@@ -267,12 +286,13 @@ else:
 
                 if st.button("Mark complete", key="complete_task_btn"):
                     next_task = sel_task_comp.complete()
+                    st.session_state.save_message = "complete_task"
                     if next_task:
                         sel_pet = next(p for p in pets if p.pet_id == sel_task_comp.pet_id)
                         next_task.add(sel_pet)
-                        st.success(f"Marked complete. Next occurrence scheduled.")
+                        st.success(f"✓ Task marked complete. Next occurrence scheduled!")
                     else:
-                        st.success(f"Marked complete.")
+                        st.success(f"✓ Task marked complete!")
                     st.rerun()
             else:
                 st.info("All tasks are already complete!")
