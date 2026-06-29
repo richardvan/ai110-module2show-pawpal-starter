@@ -176,3 +176,282 @@ def test_generate_excludes_tasks_for_other_pets():
     schedule.generate(owner, [pet], [task_mine, task_other])
     assert all(t.pet_id == "p1" for t in schedule.tasks)
     assert len(schedule.tasks) == 1
+
+
+# 6. Owner helpers and filters
+
+def test_owner_filter_tasks_is_case_insensitive_and_respects_completion():
+    owner = Owner(owner_id="o1", name="Alice", time_available_minutes=120)
+    pet = make_pet()
+    other_pet = Pet(pet_id="p2", owner_id="o1", name="Milo", species="Cat")
+    owner.add_pet(pet)
+    owner.add_pet(other_pet)
+
+    pending_task = make_task(pet_id=pet.pet_id)
+    completed_task = Task(
+        task_id="t_done",
+        pet_id=pet.pet_id,
+        task_type=TaskType.FEED_FOOD,
+        start_time=datetime.time(12, 0),
+        duration_minutes=10,
+        priority=Priority.LOW,
+    )
+    completed_task.complete()
+    other_task = Task(
+        task_id="t_other",
+        pet_id=other_pet.pet_id,
+        task_type=TaskType.GROOM,
+        start_time=datetime.time(13, 0),
+        duration_minutes=20,
+        priority=Priority.MEDIUM,
+    )
+    pet.tasks = [pending_task, completed_task]
+    other_pet.tasks = [other_task]
+
+    assert owner.filter_tasks(pet_name="rex") == [pending_task, completed_task]
+    assert owner.filter_tasks(is_completed=False) == [pending_task, other_task]
+    assert owner.filter_tasks(is_completed=True) == [completed_task]
+    assert owner.filter_tasks(is_completed=False, pet_name="REX") == [pending_task]
+
+
+def test_owner_pet_lookup_and_removal_work():
+    owner = Owner(owner_id="o1", name="Alice", time_available_minutes=120)
+    pet = make_pet()
+
+    assert owner.get_pet("p1") is None
+    owner.add_pet(pet)
+    assert owner.get_pet("p1") is pet
+
+    owner.remove_pet(pet)
+    assert owner.get_pet("p1") is None
+
+
+def test_pending_task_helpers_return_only_incomplete_tasks():
+    owner = Owner(owner_id="o1", name="Alice", time_available_minutes=120)
+    pet = make_pet()
+    owner.add_pet(pet)
+
+    pending_task = make_task(pet_id=pet.pet_id)
+    completed_task = Task(
+        task_id="t_done",
+        pet_id=pet.pet_id,
+        task_type=TaskType.FEED_FOOD,
+        start_time=datetime.time(12, 0),
+        duration_minutes=10,
+        priority=Priority.LOW,
+    )
+    completed_task.complete()
+    pet.tasks = [pending_task, completed_task]
+
+    assert pet.get_pending_tasks() == [pending_task]
+    assert owner.get_all_pending_tasks() == [pending_task]
+
+
+def test_schedule_lookup_methods_filter_by_pet_type_and_priority():
+    task_high = make_task(pet_id="p1")
+    task_medium = Task(
+        task_id="t2",
+        pet_id="p2",
+        task_type=TaskType.FEED_FOOD,
+        start_time=datetime.time(9, 0),
+        duration_minutes=15,
+        priority=Priority.MEDIUM,
+    )
+    task_low = Task(
+        task_id="t3",
+        pet_id="p1",
+        task_type=TaskType.GROOM,
+        start_time=datetime.time(10, 0),
+        duration_minutes=20,
+        priority=Priority.LOW,
+    )
+    schedule = make_schedule([task_high, task_medium, task_low])
+
+    assert schedule.get_tasks_by_pet("p1") == [task_high, task_low]
+    assert schedule.get_tasks_by_type(TaskType.FEED_FOOD) == [task_medium]
+    assert schedule.get_tasks_by_priority(Priority.HIGH) == [task_high]
+
+
+# 7. Recurrence and reporting
+
+def test_complete_task_recurring_appends_next_task():
+    task = make_task()
+    schedule = make_schedule([task])
+
+    result = schedule.complete_task(task)
+
+    assert result is not None
+    assert task.is_completed is True
+    assert len(schedule.tasks) == 2
+    assert result in schedule.tasks
+    assert "2026-01-02" in result.task_id
+
+
+def test_summarize_reports_counts_and_statuses():
+    completed_task = make_task()
+    completed_task.complete()
+    pending_task = Task(
+        task_id="t2",
+        pet_id="p1",
+        task_type=TaskType.FEED_FOOD,
+        start_time=datetime.time(9, 0),
+        duration_minutes=15,
+        priority=Priority.LOW,
+    )
+    schedule = make_schedule([completed_task, pending_task])
+
+    summary = schedule.summarize()
+
+    assert "2 task(s): 1 completed, 1 pending" in summary
+    assert "High: 1  Medium: 0  Low: 1" in summary
+    assert "[✓]" in summary
+    assert "[○]" in summary
+
+
+def test_generate_schedule_returns_conflict_warnings():
+    owner = Owner(owner_id="o1", name="Alice", time_available_minutes=120)
+    pet = make_pet()
+    owner.add_pet(pet)
+
+    first = make_task(pet_id=pet.pet_id)
+    second = Task(
+        task_id="t2",
+        pet_id=pet.pet_id,
+        task_type=TaskType.FEED_FOOD,
+        start_time=datetime.time(8, 15),
+        duration_minutes=20,
+        priority=Priority.MEDIUM,
+    )
+    pet.tasks = [first, second]
+
+    schedule, warnings = owner.generate_schedule()
+
+    assert len(schedule.tasks) == 2
+    assert len(warnings) == 1
+    assert "overlaps" in warnings[0]
+
+
+def test_generate_schedule_returns_no_warnings_when_tasks_do_not_overlap():
+    owner = Owner(owner_id="o1", name="Alice", time_available_minutes=120)
+    pet = make_pet()
+    owner.add_pet(pet)
+
+    first = make_task(pet_id=pet.pet_id)
+    second = Task(
+        task_id="t2",
+        pet_id=pet.pet_id,
+        task_type=TaskType.FEED_FOOD,
+        start_time=datetime.time(9, 0),
+        duration_minutes=20,
+        priority=Priority.MEDIUM,
+    )
+    pet.tasks = [first, second]
+
+    schedule, warnings = owner.generate_schedule()
+
+    assert len(schedule.tasks) == 2
+    assert warnings == []
+
+
+def test_generate_schedule_handles_empty_owner():
+    owner = Owner(owner_id="o1", name="Alice", time_available_minutes=120)
+
+    schedule, warnings = owner.generate_schedule()
+
+    assert schedule.tasks == []
+    assert warnings == []
+
+
+# 8. Edit methods and sorting edge cases
+
+def test_task_edit_updates_all_requested_fields():
+    task = make_task()
+
+    task.edit(
+        start_time=datetime.time(11, 30),
+        duration=45,
+        priority=Priority.LOW,
+        task_type=TaskType.GROOM,
+        description="Afternoon groom",
+        frequency=Frequency.WEEKLY,
+    )
+
+    assert task.start_time == datetime.time(11, 30)
+    assert task.duration_minutes == 45
+    assert task.priority == Priority.LOW
+    assert task.task_type == TaskType.GROOM
+    assert task.description == "Afternoon groom"
+    assert task.frequency == Frequency.WEEKLY
+
+
+def test_task_edit_keeps_frequency_when_not_provided():
+    task = make_task()
+
+    task.edit(
+        start_time=datetime.time(9, 15),
+        duration=20,
+        priority=Priority.MEDIUM,
+        task_type=TaskType.FEED_FOOD,
+        description="Changed",
+    )
+
+    assert task.frequency == Frequency.DAILY
+
+
+def test_pet_edit_updates_profile_fields():
+    pet = make_pet()
+
+    pet.edit(
+        name="Ziggy",
+        species="Cat",
+        breed="Tabby",
+        age_years=4.5,
+        notes="Curious and calm",
+    )
+
+    assert pet.name == "Ziggy"
+    assert pet.species == "Cat"
+    assert pet.breed == "Tabby"
+    assert pet.age_years == 4.5
+    assert pet.notes == "Curious and calm"
+
+
+def test_sort_by_time_orders_tasks_chronologically_only():
+    late_high = Task(
+        task_id="t1",
+        pet_id="p1",
+        task_type=TaskType.WALK_PET,
+        start_time=datetime.time(18, 0),
+        duration_minutes=30,
+        priority=Priority.HIGH,
+    )
+    early_low = Task(
+        task_id="t2",
+        pet_id="p1",
+        task_type=TaskType.GROOM,
+        start_time=datetime.time(7, 0),
+        duration_minutes=20,
+        priority=Priority.LOW,
+    )
+    schedule = make_schedule([late_high, early_low])
+
+    schedule.sort_by_time()
+
+    assert schedule.tasks == [early_low, late_high]
+
+
+def test_complete_monthly_returns_none_and_marks_task_complete():
+    task = Task(
+        task_id="t_monthly",
+        pet_id="p1",
+        task_type=TaskType.GROOM,
+        start_time=datetime.time(10, 0),
+        duration_minutes=60,
+        priority=Priority.LOW,
+        frequency=Frequency.MONTHLY,
+    )
+
+    result = task.complete(on_date=datetime.date(2026, 1, 1))
+
+    assert result is None
+    assert task.is_completed is True
