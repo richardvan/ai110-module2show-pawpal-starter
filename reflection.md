@@ -77,12 +77,19 @@
 **a. How you used AI**
 
 - How did you use AI tools during this project (for example: design brainstorming, debugging, refactoring)?
+	+ (My Answer) Claude Code, either Sonnet or Haiku models, were used extensively throughout this project.  Although, I did not use AI during the initial observations and brainstorming as I read through the problem statement on the project website.  I used AI from my generation of the UML draft diagram with mermaid.live code, through implementation of classes, methods, bug fixes, and further enhancements.
 - What kinds of prompts or questions were most helpful?
+	+ (My Answer) Prompts that are specific and small in scope, from the last project I learned to open a new Claude Code window when fixing different bugs or implementing new features, and I practiced highlighting the code lines of interest to ask Claude Code to help me with those sections, describing what I expected to see happen.
 
 **b. Judgment and verification**
 
 - Describe one moment where you did not accept an AI suggestion as-is.
+
+	+ (My Answer) When certain UI buttons didn't have confirmation buttons, had to work through that behavior from the User-side of what behavior is expected.  The information would just be silented updated, but the User doesn't know that so I worked with CC to close the expanded section and also provide a message.
+
 - How did you evaluate or verify what the AI suggested?
+
+	+ (My Answer) I would completely stop the app (CTRL + C) and restart it via command line (`streamlit run app.py`) in order to make sure any changes were reflected.  Previously, I thought just refreshing the page would work, but it didn't for this particular project. Then I tested added a pet and task, modifying/deleting the task to see what UI behavior was happening upon each click.  I would ask myself if this was intuitive for someone using the app for the same time or if it seemed buggy.  I would work with the AI until the former situiation was reached.  
 
 ---
 
@@ -91,12 +98,16 @@
 **a. What you tested**
 
 - What behaviors did you test?
+	+ (My Answer) the association between task, pets, and owner was important and I followed the UML diagram to keep me focused on the expected behavior.  The behavior of the scheduler was tested by scheduling recurrent task and making sure they actually do recur, also conflicts were detected and flagged.  Editing task, pets, and owner also required testing by trying out the UI itself to get a feel for the user experience.
 - Why were these tests important?
+	+ (My Answer) these test are important for the app to work as expected by the user.  Users probably have had experience with other scheduling apps and functions before, so it's important to replicate the expected behavior a user is used to with scheduling anything.  Test the app extensively helps prevent the user from getting to a wierd state of the app where it feels glitchy or becomes unusable.
 
 **b. Confidence**
 
 - How confident are you that your scheduler works correctly?
+	+ (My Answer) I believe my scheduler works as intended for how I understood the problem statement, as it generates the schedule when you click "Generate schedule" button.  I tried many different scenarios for conflicts and recurring task, but there could be certain cases such as adding thousands of task that might clutter the schedule or not display everything.
 - What edge cases would you test next if you had more time?
+	+ (My Answer) there are some minor things such as inputting numbers into the "Species" field, this doesn't necessarily break the app, but perhaps it could warn the user.  You can also add a pet of the exact same name, which could be what the user wants or they "Add pet" button was clicked twice so they could ask the User for confirmation they want this.
 
 ---
 
@@ -105,11 +116,14 @@
 **a. What went well**
 
 - What part of this project are you most satisfied with?
+	+ (My Answer) using AI to tackle small problems, at first the project seemed overwhelming, but I put 30 mins to an hour of time into this project over multiple days to work towards building out the app.  It was sort of fun in a way to work with the AI to get things done.  I typically use Haiku to keep the token usage low, but I do notice that it makes mistake sometimes, but if I point them out then Haiku will fix its mistake.
 
 **b. What you would improve**
 
 - If you had another iteration, what would you improve or redesign?
+	+ (My Answer) certain UI elements like putting the "Start hour (0-23)" and "Start minute" could be improved to actually be UI time controls that you scroll through a digital for to specify these options.	
 
 **c. Key takeaway**
 
 - What is one important thing you learned about designing systems or working with AI on this project?
+	+ (My Answer) it is generally a good idea to be specific about what you want the AI to do for you and you can do this by highlighting the code for it to change and telling the AI how you expect the app to function.  The AI is good as figuring out things for you and I like that sometimes it provides different options for you to choose from.  The design phase of the system was previously difficult for me in the past, but working through this project and the related tinker lab has helped me gain more experience to start with a UML design and to consider it throughout the development of an app.
