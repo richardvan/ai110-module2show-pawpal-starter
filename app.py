@@ -27,6 +27,12 @@ if "save_message" not in st.session_state:
 if "last_saved" not in st.session_state:
     st.session_state.last_saved = None
 
+if "find_slot_message" not in st.session_state:
+    st.session_state.find_slot_message = None
+
+if "pending_find_slot" not in st.session_state:
+    st.session_state.pending_find_slot = None
+
 # ── Edit Owner Profile ────────────────────────────────────────────────────────
 
 owner_profile_open = st.session_state.save_message != "owner_profile"
@@ -156,48 +162,84 @@ else:
     selected_pet_name = st.selectbox("Assign to pet", pet_names)
     selected_pet = next(p for p in pets if p.name == selected_pet_name)
 
-    col1, col2 = st.columns(2)
-    with col1:
-        task_type = st.selectbox(
-            "Task type",
-            options=list(TaskType),
-            format_func=lambda t: t.value.replace("_", " ").title(),
-        )
-    with col2:
-        priority = st.selectbox(
-            "Priority",
-            options=list(Priority),
-            format_func=lambda p: p.value.title(),
-        )
+    if st.session_state.pending_find_slot is not None:
+        pending_hour, pending_minute, pending_message = st.session_state.pending_find_slot
+        st.session_state.new_task_hour = pending_hour
+        st.session_state.new_task_minute = pending_minute
+        st.session_state.find_slot_message = pending_message
+        st.session_state.pending_find_slot = None
 
-    col3, col4 = st.columns(2)
-    with col3:
-        start_hour = st.number_input("Start hour (0–23)", min_value=0, max_value=23, value=8)
-        start_minute = st.number_input("Start minute", min_value=0, max_value=59, value=0, step=15)
-    with col4:
-        duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20)
-        frequency = st.selectbox(
-            "Frequency",
-            options=list(Frequency),
-            format_func=lambda f: f.value.title(),
-        )
+    with st.container(border=True):
+        st.caption("Choose the details below, then let PawPal suggest the next open time if you want a quick autofill.")
 
-    description = st.text_input("Description", value="")
+        col1, col2 = st.columns(2)
+        with col1:
+            task_type = st.selectbox(
+                "Task type",
+                options=list(TaskType),
+                format_func=lambda t: t.value.replace("_", " ").title(),
+            )
+        with col2:
+            priority = st.selectbox(
+                "Priority",
+                options=list(Priority),
+                format_func=lambda p: p.value.title(),
+            )
 
-    if st.button("Add task"):
-        st.session_state.task_counter += 1
-        new_task = Task(
-            task_id=f"task{st.session_state.task_counter}",
-            pet_id=selected_pet.pet_id,
-            task_type=task_type,
-            start_time=datetime.time(int(start_hour), int(start_minute)),
-            duration_minutes=int(duration),
-            priority=priority,
-            description=description,
-            frequency=frequency,
-        )
-        new_task.add(selected_pet)
-        st.success(f"Task '{task_type.value}' added to {selected_pet.name}.")
+        col3, col4 = st.columns(2)
+        with col3:
+            start_hour = st.number_input("Start hour (0–23)", min_value=0, max_value=23, value=8, key="new_task_hour")
+            start_minute = st.number_input("Start minute", min_value=0, max_value=59, value=0, step=15, key="new_task_minute")
+        with col4:
+            duration = st.number_input("Duration (minutes)", min_value=1, max_value=240, value=20, key="new_task_duration")
+            frequency = st.selectbox(
+                "Frequency",
+                options=list(Frequency),
+                format_func=lambda f: f.value.title(),
+            )
+
+        button_col, hint_col = st.columns([1, 2])
+        with button_col:
+            find_slot_clicked = st.button("Find next available slot", key="find_slot_btn", use_container_width=True)
+        with hint_col:
+            if st.session_state.get("find_slot_message"):
+                level, msg = st.session_state.find_slot_message
+                getattr(st, level)(msg)
+                st.session_state.find_slot_message = None
+            else:
+                st.caption("Searches the selected pet's calendar and fills the time fields with the first open slot.")
+
+        if find_slot_clicked:
+            suggested = selected_pet.find_next_available_slot(duration_minutes=int(duration))
+            if suggested is None:
+                st.session_state.find_slot_message = (
+                    "warning",
+                    f"No free {int(duration)}-minute slot found for {selected_pet.name} in the day window.",
+                )
+            else:
+                st.session_state.pending_find_slot = (
+                    suggested.hour,
+                    suggested.minute,
+                    ("success", f"Suggested slot: {suggested.strftime('%H:%M')} for {selected_pet.name}."),
+                )
+            st.rerun()
+
+        description = st.text_input("Description", value="")
+
+        if st.button("Add task"):
+            st.session_state.task_counter += 1
+            new_task = Task(
+                task_id=f"task{st.session_state.task_counter}",
+                pet_id=selected_pet.pet_id,
+                task_type=task_type,
+                start_time=datetime.time(int(start_hour), int(start_minute)),
+                duration_minutes=int(duration),
+                priority=priority,
+                description=description,
+                frequency=frequency,
+            )
+            new_task.add(selected_pet)
+            st.success(f"Task '{task_type.value}' added to {selected_pet.name}.")
 
     all_tasks = st.session_state.owner.get_all_tasks()
     if all_tasks:

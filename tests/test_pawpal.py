@@ -118,7 +118,102 @@ def test_same_pet_only_suppresses_cross_pet_conflicts():
     assert len(schedule.get_conflicts(same_pet_only=False)) == 1
 
 
-# 3. reorder() — priority then chronological within priority
+# 3. Find next available slot
+
+def test_find_slot_returns_day_start_when_pet_has_no_tasks():
+    pet = make_pet()
+
+    assert pet.find_next_available_slot(30) == datetime.time(7, 0)
+
+
+def test_find_slot_skips_past_conflicting_task():
+    pet = make_pet()
+    pet.tasks = [
+        Task(
+            task_id="t_block",
+            pet_id=pet.pet_id,
+            task_type=TaskType.WALK_PET,
+            start_time=datetime.time(8, 0),
+            duration_minutes=30,
+            priority=Priority.HIGH,
+        )
+    ]
+
+    assert pet.find_next_available_slot(30, day_start=datetime.time(8, 0)) == datetime.time(8, 30)
+
+
+def test_find_slot_respects_back_to_back_as_free():
+    pet = make_pet()
+    pet.tasks = [
+        Task(
+            task_id="t_block",
+            pet_id=pet.pet_id,
+            task_type=TaskType.WALK_PET,
+            start_time=datetime.time(8, 0),
+            duration_minutes=30,
+            priority=Priority.HIGH,
+        )
+    ]
+
+    assert pet.find_next_available_slot(15, day_start=datetime.time(8, 30)) == datetime.time(8, 30)
+
+
+def test_find_slot_returns_none_when_day_is_fully_booked():
+    pet = make_pet()
+    pet.tasks = [
+        Task(
+            task_id="t_block",
+            pet_id=pet.pet_id,
+            task_type=TaskType.WALK_PET,
+            start_time=datetime.time(8, 0),
+            duration_minutes=60,
+            priority=Priority.HIGH,
+        )
+    ]
+
+    assert pet.find_next_available_slot(30, day_start=datetime.time(8, 0), day_end=datetime.time(9, 0)) is None
+
+
+def test_find_slot_returns_none_when_duration_exceeds_window():
+    pet = make_pet()
+
+    assert pet.find_next_available_slot(90, day_start=datetime.time(8, 0), day_end=datetime.time(9, 0)) is None
+
+
+def test_find_slot_ignores_other_pets_tasks():
+    p1 = make_pet()
+    p2 = Pet(pet_id="p2", owner_id="o1", name="Milo", species="Cat")
+    p1.tasks = [
+        Task(
+            task_id="t_block",
+            pet_id=p1.pet_id,
+            task_type=TaskType.WALK_PET,
+            start_time=datetime.time(8, 0),
+            duration_minutes=60,
+            priority=Priority.HIGH,
+        )
+    ]
+
+    assert p2.find_next_available_slot(30, day_start=datetime.time(8, 0)) == datetime.time(8, 0)
+
+
+def test_find_slot_custom_step_size():
+    pet = make_pet()
+    pet.tasks = [
+        Task(
+            task_id="t_block",
+            pet_id=pet.pet_id,
+            task_type=TaskType.WALK_PET,
+            start_time=datetime.time(8, 0),
+            duration_minutes=20,
+            priority=Priority.HIGH,
+        )
+    ]
+
+    assert pet.find_next_available_slot(20, day_start=datetime.time(8, 0), step_minutes=10) == datetime.time(8, 20)
+
+
+# 4. reorder() — priority then chronological within priority
 
 def test_reorder_puts_high_before_low_regardless_of_time():
     low_early = Task(

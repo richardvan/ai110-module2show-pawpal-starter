@@ -5,6 +5,10 @@ from typing import List, Optional
 import datetime
 import itertools
 
+DEFAULT_DAY_START = datetime.time(7, 0)
+DEFAULT_DAY_END = datetime.time(21, 0)
+DEFAULT_SLOT_STEP_MINUTES = 15
+
 
 class TaskType(Enum):
     WALK_PET = "walk_pet"
@@ -25,6 +29,22 @@ class Frequency(Enum):
     DAILY = "daily"
     WEEKLY = "weekly"
     MONTHLY = "monthly"
+
+
+def _intervals_overlap(
+    a_start: datetime.time,
+    a_duration: int,
+    b_start: datetime.time,
+    b_duration: int,
+    anchor: Optional[datetime.date] = None,
+) -> bool:
+    """Return True when two time windows overlap."""
+    anchor = anchor or datetime.date.today()
+    a_dt_start = datetime.datetime.combine(anchor, a_start)
+    a_dt_end = a_dt_start + datetime.timedelta(minutes=a_duration)
+    b_dt_start = datetime.datetime.combine(anchor, b_start)
+    b_dt_end = b_dt_start + datetime.timedelta(minutes=b_duration)
+    return a_dt_start < b_dt_end and b_dt_start < a_dt_end
 
 
 @dataclass
@@ -129,6 +149,37 @@ class Pet:
         """Return only tasks that have not been completed."""
         return [t for t in self.tasks if not t.is_completed]
 
+    def find_next_available_slot(
+        self,
+        duration_minutes: int,
+        day_start: datetime.time = DEFAULT_DAY_START,
+        day_end: datetime.time = DEFAULT_DAY_END,
+        step_minutes: int = DEFAULT_SLOT_STEP_MINUTES,
+    ) -> Optional[datetime.time]:
+        """Return the earliest open slot for this pet within the given day window.
+
+        Note: Task does not currently have a date field, so this treats the pet's
+        task list as a single generic day.
+        """
+        anchor = datetime.date.today()
+        window_start = datetime.datetime.combine(anchor, day_start)
+        window_end = datetime.datetime.combine(anchor, day_end)
+        duration = datetime.timedelta(minutes=duration_minutes)
+        if duration > (window_end - window_start):
+            return None
+
+        existing = sorted(self.tasks, key=lambda t: t.start_time)
+        candidate_start = window_start
+        step = datetime.timedelta(minutes=step_minutes)
+        while candidate_start + duration <= window_end:
+            if not any(
+                _intervals_overlap(candidate_start.time(), duration_minutes, task.start_time, task.duration_minutes, anchor)
+                for task in existing
+            ):
+                return candidate_start.time()
+            candidate_start += step
+        return None
+
 
 @dataclass
 class Schedule:
@@ -180,14 +231,10 @@ class Schedule:
         anchor = datetime.date.today()
         conflicts = []
         for i, a in enumerate(self.tasks):
-            a_start = datetime.datetime.combine(anchor, a.start_time)
-            a_end = a_start + datetime.timedelta(minutes=a.duration_minutes)
             for b in self.tasks[i + 1:]:
                 if same_pet_only and a.pet_id != b.pet_id:
                     continue
-                b_start = datetime.datetime.combine(anchor, b.start_time)
-                b_end = b_start + datetime.timedelta(minutes=b.duration_minutes)
-                if a_start < b_end and b_start < a_end:
+                if _intervals_overlap(a.start_time, a.duration_minutes, b.start_time, b.duration_minutes, anchor):
                     conflicts.append((a, b))
         return conflicts
 
